@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Non-Silicate Mineral Fracture Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #0f0f23, #1a1a3a);
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #renderContainer {
+            width: 100%;
+            height: 100%;
+        }
+
+        .ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.9);
+            padding: 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(15px);
+            z-index: 100;
+            max-width: 320px;
+            border: 2px solid rgba(255,215,0,0.6);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .ui-panel h2 {
+            margin-top: 0;
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            font-size: 1.4rem;
+        }
+
+        .mineral-selector {
+            margin: 15px 0;
+        }
+
+        .mineral-selector select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,215,0,0.4);
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .mineral-selector option {
+            background: #1a1a3a;
+            color: white;
+        }
+
+        .control-group {
+            margin: 15px 0;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #e0e0e0;
+        }
+
+        .btn {
+            background: linear-gradient(145deg, #ffd700, #ffb000);
+            color: #1a1a3a;
+            border: none;
+            padding: 12px 16px;
+            margin: 5px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 6px rgba(255,215,0,0.3);
+        }
+
+        .btn:hover {
+            background: linear-gradient(145deg, #ffb000, #ffd700);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(255,215,0,0.4);
+        }
+
+        .btn.danger {
+            background: linear-gradient(145deg, #ff6b6b, #ee5a52);
+            color: white;
+        }
+
+        .btn.danger:hover {
+            background: linear-gradient(145deg, #ee5a52, #ff6b6b);
+        }
+
+        .btn.secondary {
+            background: linear-gradient(145deg, #74b9ff, #0984e3);
+            color: white;
+        }
+
+        .btn.secondary:hover {
+            background: linear-gradient(145deg, #0984e3, #74b9ff);
+        }
+
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.9);
+            padding: 18px;
+            border-radius: 12px;
+            backdrop-filter: blur(15px);
+            z-index: 100;
+            max-width: 280px;
+            border: 2px solid rgba(255,215,0,0.6);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .fracture-info {
+            font-size: 12px;
+            color: #81c784;
+            margin-top: 10px;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffd700;
+            font-size: 20px;
+            z-index: 200;
+            text-shadow: 0 0 15px rgba(255,215,0,0.7);
+        }
+
+        .instructions {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.9);
+            padding: 16px;
+            border-radius: 12px;
+            backdrop-filter: blur(15px);
+            z-index: 100;
+            max-width: 220px;
+            font-size: 12px;
+            border: 2px solid rgba(255,215,0,0.6);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .instructions h3 {
+            margin-top: 0;
+            color: #ffd700;
+            font-size: 14px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 5px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            margin: 12px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffd700, #ffb000);
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(255,215,0,0.5);
+        }
+
+        .mineral-class {
+            background: rgba(255,215,0,0.1);
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #ffd700;
+            margin: 8px 0;
+            border: 1px solid rgba(255,215,0,0.3);
+        }
+
+        .hardness-indicator {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .hardness-dots {
+            display: flex;
+            margin-left: 8px;
+        }
+
+        .hardness-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin: 0 2px;
+            background: rgba(255,255,255,0.3);
+        }
+
+        .hardness-dot.active {
+            background: #ffd700;
+            box-shadow: 0 0 6px rgba(255,215,0,0.6);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="renderContainer"></div>
+
+        <div class="loading" id="loading">
+            ⚗️ Loading 3D Non-Silicate Mineral Lab...
+        </div>
+
+        <div class="ui-panel">
+            <h2>⚗️ Non-Silicate Minerals</h2>
+
+            <div class="mineral-selector">
+                <label>Select Mineral:</label>
+                <select id="mineralSelect">
+                    <option value="pyrite">Pyrite (Conchoidal Fracture)</option>
+                    <option value="galena">Galena (3 @ 90° Cleavage)</option>
+                    <option value="chalcopyrite">Chalcopyrite (Irregular Fracture)</option>
+                    <option value="magnetite">Magnetite (Irregular Fracture)</option>
+                    <option value="hematite">Hematite (Irregular Fracture)</option>
+                    <option value="gypsum">Gypsum (1 Plane Cleavage)</option>
+                    <option value="halite">Halite (3 @ 90° Cleavage)</option>
+                    <option value="sylvite">Sylvite (3 @ 90° Cleavage)</option>
+                    <option value="graphite">Graphite (1 Plane Cleavage)</option>
+                    <option value="calcite">Calcite (3 Not @ 90° Cleavage)</option>
+                    <option value="dolomite">Dolomite (3 Not @ 90° Cleavage)</option>
+                    <option value="fluorite">Fluorite (4 Planes Not @ 90°)</option>
+                    <option value="apatite">Apatite (Irregular Fracture)</option>
+                    <option value="copper">Copper (Irregular Fracture)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <button class="btn" id="fractureBtn">⚡ Fracture Mineral</button>
+                <button class="btn" id="resetBtn">🔄 Reset Specimen</button>
+            </div>
+
+            <div class="control-group">
+                <button class="btn secondary" id="cleavageBtn">🔍 Show Cleavage Planes</button>
+                <button class="btn secondary" id="rotateBtn">🔄 Auto Rotate</button>
+                <button class="btn danger" id="explodeBtn">💥 Explode View</button>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <div class="fracture-info" id="fractureInfo">
+                Ready to fracture specimen
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>Controls</h3>
+            <p><strong>Mouse:</strong><br>
+            • Left drag: Rotate view<br>
+            • Right drag: Pan<br>
+            • Wheel: Zoom in/out</p>
+            <p><strong>Keyboard:</strong><br>
+            • F: Fracture mineral<br>
+            • R: Reset specimen<br>
+            • C: Toggle cleavage planes<br>
+            • Space: Auto rotate</p>
+        </div>
+
+        <div class="info-panel">
+            <div id="mineralInfo">
+                <h3 id="mineralName">Pyrite</h3>
+                <div class="mineral-class" id="mineralClass">Sulphide</div>
+                <p id="mineralFormula">FeS₂</p>
+                <div class="hardness-indicator">
+                    <span>Hardness:</span>
+                    <div class="hardness-dots" id="hardnessDots"></div>
+                    <span id="hardnessValue">6-6.5</span>
+                </div>
+                <p id="mineralFracture">Conchoidal fracture with metallic luster</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // Non-silicate mineral database
+        const mineralData = {
+            pyrite: {
+                name: "Pyrite",
+                formula: "FeS₂",
+                hardness: "6-6.5",
+                hardnessNum: 6.25,
+                color: [0.8, 0.7, 0.2],
+                mineralClass: "Sulphide",
+                fracture: "Conchoidal fracture with metallic luster",
+                fractureType: "conchoidal",
+                luster: "metallic",
+                cleavagePlanes: []
+            },
+            galena: {
+                name: "Galena",
+                formula: "PbS",
+                hardness: "2.5",
+                hardnessNum: 2.5,
+                color: [0.4, 0.4, 0.4],
+                mineralClass: "Sulphide",
+                fracture: "Perfect cubic cleavage in three directions at 90°",
+                fractureType: "three_planes_90",
+                luster: "metallic",
+                cleavagePlanes: [
+                    { normal: [1, 0, 0], position: [0, 0, 0] },
+                    { normal: [0, 1, 0], position: [0, 0, 0] },
+                    { normal: [0, 0, 1], position: [0, 0, 0] }
+                ]
+            },
+            chalcopyrite: {
+                name: "Chalcopyrite",
+                formula: "CuFeS₂",
+                hardness: "3.5-4",
+                hardnessNum: 3.75,
+                color: [0.8, 0.6, 0.2],
+                mineralClass: "Sulphide",
+                fracture: "Irregular fracture, looks like gold but softer",
+                fractureType: "irregular",
+                luster: "metallic",
+                cleavagePlanes: []
+            },
+            magnetite: {
+                name: "Magnetite",
+                formula: "Fe₃O₄",
+                hardness: "5.5",
+                hardnessNum: 5.5,
+                color: [0.2, 0.2, 0.2],
+                mineralClass: "Oxide",
+                fracture: "Irregular fracture, strongly magnetic",
+                fractureType: "irregular",
+                luster: "metallic",
+                cleavagePlanes: []
+            },
+            hematite: {
+                name: "Hematite",
+                formula: "Fe₂O₃",
+                hardness: "5.5",
+                hardnessNum: 5.5,
+                color: [0.4, 0.1, 0.1],
+                mineralClass: "Oxide",
+                fracture: "Irregular fracture, weakly magnetic",
+                fractureType: "irregular",
+                luster: "metallic",
+                cleavagePlanes: []
+            },
+            gypsum: {
+                name: "Gypsum",
+                formula: "CaSO₄·2H₂O",
+                hardness: "2",
+                hardnessNum: 2,
+                color: [0.95, 0.95, 0.95],
+                mineralClass: "Sulphate",
+                fracture: "Perfect cleavage in one direction, may show silky strands",
+                fractureType: "single_plane",
+                luster: "non-metallic",
+                cleavagePlanes: [
+                    { normal: [0, 1, 0], position: [0, 0, 0] }
+                ]
+            },
+            halite: {
+                name: "Halite",
+                formula: "NaCl",
+                hardness: "2.5",
+                hardnessNum: 2.5,
+                color: [0.9, 0.9, 0.9],
+                mineralClass: "Halide",
+                fracture: "Perfect cubic cleavage, tastes salty",
+                fractureType: "three_planes_90",
+                luster: "non-metallic",
+                cleavagePlanes: [
+                    { normal: [1, 0, 0], position: [0, 0, 0] },
+                    { normal: [0, 1, 0], position: [0, 0, 0] },
+                    { normal: [0, 0, 1], position: [0, 0, 0] }
+                ]
+            },
+            sylvite: {
+                name: "Sylvite",
+                formula: "KCl",
+                hardness: "1.5-2",
+                hardnessNum: 1.75,
+                color: [0.9, 0.7, 0.7],
+                mineralClass: "Halide",
+                fracture: "Perfect cubic cleavage, bitter salty taste",
+                fractureType: "three_planes_90",
+                luster: "non-metallic",
+                cleavagePlanes: [
+                    { normal: [1, 0, 0], position: [0, 0, 0] },
+                    { normal: [0, 1, 0], position: [0, 0, 0] },
+                    { normal: [0, 0, 1], position: [0, 0, 0] }
+                ]
+            },
+            graphite: {
+                name: "Graphite",
+                formula: "C",
+                hardness: "1-2",
+                hardnessNum: 1.5,
+                color: [0.2, 0.2, 0.2],
+                mineralClass: "Native Element",
+                fracture: "Perfect cleavage in one direction, greasy feel",
+                fractureType: "single_plane",
+                luster: "metallic",
+                cleavagePlanes: [
+                    { normal: [0, 1, 0], position: [0, 0, 0] }
+                ]
+            },
+            calcite: {
+                name: "Calcite",
+                formula: "CaCO₃",
+                hardness: "3",
+                hardnessNum: 3,
+                color: [0.95, 0.95, 0.9],
+                mineralClass: "Carbonate",
+                fracture: "Perfect rhombohedral cleavage (3 not @ 90°)",
+                fractureType: "three_planes_oblique",
+                luster: "non-metallic",
+                cleavagePlanes: [
+                    { normal: [1, 0, 0], position: [0, 0, 0] },
+                    { normal: [0.5, 0.866, 0], position: [0, 0, 0] },
+                    { normal: [-0.5, 0.866, 0], position: [0, 0, 0] }
+                ]
+            },
+            dolomite: {
+                name: "Dolomite",
+                formula: "(Ca,Mg)CO₃",
+                hardness: "3.5-4",
+                hardnessNum: 3.75,
+                color: [0.9, 0.85, 0.8],
+                mineralClass: "Carbonate",
+                fracture: "Perfect rhombohedral cleavage, reacts to HCl when powdered",
+                fractureType: "three_planes_oblique",
+                luster: "non-metallic",
+                cleavagePlanes: [
+                    { normal: [1, 0, 0], position: [0, 0, 0] },
+                    { normal: [0.5, 0.866, 0], position: [0, 0, 0] },
+                    { normal: [-0.5, 0.866, 0], position: [0, 0, 0] }
+                ]
+            },
+            fluorite: {
+                name: "Fluorite",
+                formula: "CaF₂",
+                hardness: "4",
+                hardnessNum: 4,
+                color: [0.7, 0.5, 0.9],
+                mineralClass: "Halide",
+                fracture: "Perfect octahedral cleavage (4 planes not @ 90°)",
+                fractureType: "four_planes_octahedral",
+                luster: "non-metallic",
+                cleavagePlanes: [
+                    { normal: [1, 1, 1], position: [0, 0, 0] },
+                    { normal: [-1, 1, 1], position: [0, 0, 0] },
+                    { normal: [1, -1, 1], position: [0, 0, 0] },
+                    { normal: [1, 1, -1], position: [0, 0, 0] }
+                ]
+            },
+            apatite: {
+                name: "Apatite",
+                formula: "Ca₅(PO₄)₃F",
+                hardness: "5",
+                hardnessNum: 5,
+                color: [0.6, 0.8, 0.4],
+                mineralClass: "Phosphate",
+                fracture: "Irregular fracture, crystals often hexagonal",
+                fractureType: "irregular",
+                luster: "non-metallic",
+                cleavagePlanes: []
+            },
+            copper: {
+                name: "Copper",
+                formula: "Cu",
+                hardness: "2.5-3",
+                hardnessNum: 2.75,
+                color: [0.7, 0.4, 0.2],
+                mineralClass: "Native Element",
+                fracture: "Irregular fracture, tarnishes to orange-brown",
+                fractureType: "irregular",
+                luster: "metallic",
+                cleavagePlanes: []
+            }
+        };
+
+        // Three.js setup
+        let scene, camera, renderer, controls;
+        let currentMineral = null;
+        let mineralMesh = null;
+        let fractureParts = [];
+        let cleavagePlanes = [];
+        let isRotating = false;
+        let isExploded = false;
+        let showCleavagePlanes = false;
+        let animationId = null;
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xffffff);
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(5, 5, 5);
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('renderContainer').appendChild(renderer.domElement);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Lighting
+            setupLighting();
+
+            // Load initial mineral
+            loadMineral('pyrite');
+
+            // Event listeners
+            setupEventListeners();
+
+            // Hide loading
+            document.getElementById('loading').style.display = 'none';
+
+            // Start render loop
+            animate();
+        }
+
+        function setupLighting() {
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+
+            // Main directional light (golden)
+            const directionalLight = new THREE.DirectionalLight(0xffd700, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+
+            // Fill lights for non-silicate minerals
+            const fillLight1 = new THREE.DirectionalLight(0x6699ff, 0.2);
+            fillLight1.position.set(-10, 5, -5);
+            scene.add(fillLight1);
+
+            const fillLight2 = new THREE.DirectionalLight(0xff9966, 0.2);
+            fillLight2.position.set(5, -10, 10);
+            scene.add(fillLight2);
+
+            // Point light for metallic sparkle
+            const pointLight = new THREE.PointLight(0xffd700, 0.6, 20);
+            pointLight.position.set(3, 3, 3);
+            scene.add(pointLight);
+        }
+
+        function loadMineral(mineralType) {
+            // Clear existing mineral
+            clearMineral();
+
+            currentMineral = mineralType;
+            const data = mineralData[mineralType];
+
+            // Update UI
+            updateMineralInfo(data);
+
+            // Create mineral geometry based on type and crystal system
+            const geometry = createMineralGeometry(mineralType);
+
+            // Create material with realistic properties
+            const material = createMineralMaterial(data);
+
+            // Create mesh
+            mineralMesh = new THREE.Mesh(geometry, material);
+            mineralMesh.castShadow = true;
+            mineralMesh.receiveShadow = true;
+            mineralMesh.userData = { mineralType, fractured: false };
+
+            scene.add(mineralMesh);
+
+            // Reset UI state
+            document.getElementById('fractureInfo').textContent = 'Ready to fracture specimen';
+            updateProgress(0);
+        }
+
+        function createMineralGeometry(mineralType) {
+            let geometry;
+
+            switch (mineralType) {
+                case 'pyrite':
+                    // Cubic crystals
+                    geometry = new THREE.BoxGeometry(2, 2, 2);
+                    break;
+                case 'galena':
+                case 'halite':
+                case 'sylvite':
+                    // Perfect cubic crystals
+                    geometry = new THREE.BoxGeometry(2.2, 2.2, 2.2);
+                    break;
+                case 'chalcopyrite':
+                    // Tetragonal crystals
+                    geometry = new THREE.BoxGeometry(1.8, 2.4, 1.8);
+                    break;
+                case 'magnetite':
+                    // Octahedral crystals
+                    geometry = new THREE.OctahedronGeometry(1.5);
+                    break;
+                case 'hematite':
+                    // Hexagonal/rhombohedral
+                    geometry = new THREE.CylinderGeometry(1.2, 1.2, 2.5, 6);
+                    break;
+                case 'gypsum':
+                    // Monoclinic, often platy
+                    geometry = new THREE.BoxGeometry(3, 0.8, 2);
+                    break;
+                case 'graphite':
+                    // Hexagonal, very platy
+                    geometry = new THREE.BoxGeometry(3, 0.3, 2.5);
+                    break;
+                case 'calcite':
+                case 'dolomite':
+                    // Rhombohedral crystals
+                    geometry = new THREE.BoxGeometry(2, 2.2, 1.8);
+                    break;
+                case 'fluorite':
+                    // Cubic/octahedral
+                    geometry = new THREE.OctahedronGeometry(1.8);
+                    break;
+                case 'apatite':
+                    // Hexagonal prisms
+                    geometry = new THREE.CylinderGeometry(1, 1, 3, 6);
+                    break;
+                case 'copper':
+                    // Irregular native metal
+                    geometry = new THREE.SphereGeometry(1.5, 12, 8);
+                    break;
+                default:
+                    geometry = new THREE.BoxGeometry(2, 2, 2);
+                    break;
+            }
+
+            return geometry;
+        }
+
+        function createMineralMaterial(data) {
+            const color = new THREE.Color(data.color[0], data.color[1], data.color[2]);
+
+            let material;
+
+            if (data.luster === "metallic") {
+                material = new THREE.MeshPhysicalMaterial({
+                    color: color,
+                    metalness: 0.9,
+                    roughness: 0.2,
+                    clearcoat: 0.1,
+                    clearcoatRoughness: 0.1,
+                    reflectivity: 0.8
+                });
+            } else {
+                material = new THREE.MeshPhysicalMaterial({
+                    color: color,
+                    metalness: 0.0,
+                    roughness: 0.4,
+                    clearcoat: 0.2,
+                    clearcoatRoughness: 0.3,
+                    transparent: data.name === "Gypsum" || data.name === "Halite",
+                    opacity: (data.name === "Gypsum" || data.name === "Halite") ? 0.8 : 1.0
+                });
+            }
+
+            // Special material properties
+            if (data.name === "Fluorite") {
+                material.transparent = true;
+                material.opacity = 0.7;
+                material.roughness = 0.1;
+            } else if (data.name === "Graphite") {
+                material.metalness = 0.8;
+                material.roughness = 0.1;
+            }
+
+            return material;
+        }
+
+        function fractureMineral() {
+            if (!mineralMesh || mineralMesh.userData.fractured) return;
+
+            const data = mineralData[currentMineral];
+            document.getElementById('fractureInfo').textContent = `Fracturing along ${data.fractureType} pattern...`;
+
+            mineralMesh.userData.fractured = true;
+
+            // Create fracture animation based on type
+            switch (data.fractureType) {
+                case 'single_plane':
+                    fractureSinglePlane();
+                    break;
+                case 'three_planes_90':
+                    fractureThreePlanes90();
+                    break;
+                case 'three_planes_oblique':
+                    fractureThreePlanesOblique();
+                    break;
+                case 'four_planes_octahedral':
+                    fractureFourPlanesOctahedral();
+                    break;
+                case 'irregular':
+                    fractureIrregular();
+                    break;
+                case 'conchoidal':
+                    fractureConchoidal();
+                    break;
+            }
+
+            // Add particle effects
+            addFractureParticles();
+
+            // Update progress
+            animateProgress();
+        }
+
+        function fractureSinglePlane() {
+            const geometry = mineralMesh.geometry.clone();
+            const material = mineralMesh.material.clone();
+
+            // Create two halves
+            const part1 = new THREE.Mesh(geometry, material);
+            const part2 = new THREE.Mesh(geometry, material);
+
+            part1.position.copy(mineralMesh.position);
+            part2.position.copy(mineralMesh.position);
+            part1.rotation.copy(mineralMesh.rotation);
+            part2.rotation.copy(mineralMesh.rotation);
+
+            // Scale down to show fracture gap
+            part1.scale.set(0.9, 0.45, 0.9);
+            part2.scale.set(0.9, 0.45, 0.9);
+
+            scene.add(part1);
+            scene.add(part2);
+
+            // Animate separation
+            const targetPos1 = part1.position.clone();
+            const targetPos2 = part2.position.clone();
+            targetPos1.y += 0.8;
+            targetPos2.y -= 0.8;
+
+            animateFracture(part1, targetPos1, new THREE.Vector3(0, 0.015, 0));
+            animateFracture(part2, targetPos2, new THREE.Vector3(0, -0.015, 0));
+
+            fractureParts.push(part1, part2);
+            scene.remove(mineralMesh);
+        }
+
+        function fractureThreePlanes90() {
+            const geometry = mineralMesh.geometry.clone();
+            const material = mineralMesh.material.clone();
+
+            // Create 8 cubic pieces (2x2x2)
+            for (let x = 0; x < 2; x++) {
+                for (let y = 0; y < 2; y++) {
+                    for (let z = 0; z < 2; z++) {
+                        const part = new THREE.Mesh(geometry, material);
+                        part.position.copy(mineralMesh.position);
+                        part.rotation.copy(mineralMesh.rotation);
+                        part.scale.set(0.4, 0.4, 0.4);
+
+                        const offset = new THREE.Vector3(
+                            (x - 0.5) * 1.2,
+                            (y - 0.5) * 1.2,
+                            (z - 0.5) * 1.2
+                        );
+
+                        const velocity = offset.clone().multiplyScalar(0.015);
+                        animateFracture(part, part.position.clone().add(offset), velocity);
+
+                        scene.add(part);
+                        fractureParts.push(part);
+                    }
+                }
+            }
+
+            scene.remove(mineralMesh);
+        }
+
+        function fractureThreePlanesOblique() {
+            const geometry = mineralMesh.geometry.clone();
+            const material = mineralMesh.material.clone();
+
+            // Create 6 rhombohedral pieces
+            for (let i = 0; i < 6; i++) {
+                const part = new THREE.Mesh(geometry, material);
+                part.position.copy(mineralMesh.position);
+                part.rotation.copy(mineralMesh.rotation);
+                part.scale.set(0.6, 0.7, 0.6);
+
+                const angle = (i * Math.PI) / 3;
+                const radius = 1.0;
+                const targetPos = new THREE.Vector3(
+                    Math.cos(angle) * radius,
+                    (i % 2 - 0.5) * 0.8,
+                    Math.sin(angle) * radius
+                );
+
+                part.rotation.y = angle;
+                const velocity = targetPos.clone().multiplyScalar(0.012);
+                animateFracture(part, part.position.clone().add(targetPos), velocity);
+
+                scene.add(part);
+                fractureParts.push(part);
+            }
+
+            scene.remove(mineralMesh);
+        }
+
+        function fractureFourPlanesOctahedral() {
+            const geometry = mineralMesh.geometry.clone();
+            const material = mineralMesh.material.clone();
+
+            // Create 8 octahedral pieces
+            const positions = [
+                [1, 1, 1], [-1, 1, 1], [1, -1, 1], [1, 1, -1],
+                [-1, -1, 1], [-1, 1, -1], [1, -1, -1], [-1, -1, -1]
+            ];
+
+            positions.forEach((pos, i) => {
+                const part = new THREE.Mesh(geometry, material);
+                part.position.copy(mineralMesh.position);
+                part.rotation.copy(mineralMesh.rotation);
+                part.scale.set(0.5, 0.5, 0.5);
+
+                const targetPos = new THREE.Vector3(...pos).multiplyScalar(0.8);
+                const velocity = targetPos.clone().multiplyScalar(0.015);
+                animateFracture(part, part.position.clone().add(targetPos), velocity);
+
+                scene.add(part);
+                fractureParts.push(part);
+            });
+
+            scene.remove(mineralMesh);
+        }
+
+        function fractureIrregular() {
+            const geometry = mineralMesh.geometry.clone();
+            const material = mineralMesh.material.clone();
+
+            // Create random irregular pieces
+            const numPieces = 6 + Math.floor(Math.random() * 4);
+
+            for (let i = 0; i < numPieces; i++) {
+                const part = new THREE.Mesh(geometry, material);
+                part.position.copy(mineralMesh.position);
+                part.rotation.copy(mineralMesh.rotation);
+
+                // Random scaling for irregular pieces
+                const scaleX = 0.3 + Math.random() * 0.4;
+                const scaleY = 0.3 + Math.random() * 0.4;
+                const scaleZ = 0.3 + Math.random() * 0.4;
+                part.scale.set(scaleX, scaleY, scaleZ);
+
+                // Random positions
+                const targetPos = new THREE.Vector3(
+                    (Math.random() - 0.5) * 3,
+                    (Math.random() - 0.5) * 3,
+                    (Math.random() - 0.5) * 3
+                );
+
+                const velocity = targetPos.clone().multiplyScalar(0.01 + Math.random() * 0.015);
+                animateFracture(part, part.position.clone().add(targetPos), velocity);
+
+                scene.add(part);
+                fractureParts.push(part);
+            }
+
+            scene.remove(mineralMesh);
+        }
+
+        function fractureConchoidal() {
+            const geometry = new THREE.SphereGeometry(0.3, 8, 6);
+            const material = mineralMesh.material.clone();
+
+            // Create curved fracture pieces
+            const numPieces = 10;
+
+            for (let i = 0; i < numPieces; i++) {
+                const part = new THREE.Mesh(geometry, material);
+                part.position.copy(mineralMesh.position);
+
+                // Arrange in shell-like conchoidal pattern
+                const phi = Math.acos(1 - 2 * (i / numPieces));
+                const theta = Math.sqrt(numPieces * Math.PI) * phi;
+
+                const radius = 1.8;
+                const targetPos = new THREE.Vector3(
+                    radius * Math.sin(phi) * Math.cos(theta),
+                    radius * Math.sin(phi) * Math.sin(theta),
+                    radius * Math.cos(phi)
+                );
+
+                const velocity = targetPos.clone().multiplyScalar(0.012);
+                animateFracture(part, part.position.clone().add(targetPos), velocity);
+
+                scene.add(part);
+                fractureParts.push(part);
+            }
+
+            scene.remove(mineralMesh);
+        }
+
+        function animateFracture(part, targetPos, velocity) {
+            let currentVel = velocity.clone();
+            const gravity = new THREE.Vector3(0, -0.001, 0);
+            const damping = 0.98;
+
+            function updatePosition() {
+                currentVel.add(gravity);
+                currentVel.multiplyScalar(damping);
+                part.position.add(currentVel);
+
+                // Add rotation
+                part.rotation.x += currentVel.length() * 0.1;
+                part.rotation.y += currentVel.length() * 0.15;
+                part.rotation.z += currentVel.length() * 0.05;
+
+                if (currentVel.length() > 0.001) {
+                    requestAnimationFrame(updatePosition);
+                }
+            }
+
+            updatePosition();
+        }
+
+        function addFractureParticles() {
+            const particleGeometry = new THREE.BufferGeometry();
+            const particleCount = 80;
+            const positions = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                positions[i] = mineralMesh ? mineralMesh.position.x + (Math.random() - 0.5) * 2 : 0;
+                positions[i + 1] = mineralMesh ? mineralMesh.position.y + (Math.random() - 0.5) * 2 : 0;
+                positions[i + 2] = mineralMesh ? mineralMesh.position.z + (Math.random() - 0.5) * 2 : 0;
+            }
+
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0xffd700,
+                size: 0.1,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            const particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+
+            // Animate particles
+            let opacity = 0.8;
+            const animateParticles = () => {
+                opacity -= 0.02;
+                particleMaterial.opacity = opacity;
+
+                if (opacity > 0) {
+                    requestAnimationFrame(animateParticles);
+                } else {
+                    scene.remove(particles);
+                }
+            };
+            animateParticles();
+        }
+
+        function resetMineral() {
+            clearMineral();
+            loadMineral(currentMineral);
+            isExploded = false;
+            showCleavagePlanes = false;
+            document.getElementById('explodeBtn').textContent = '💥 Explode View';
+            document.getElementById('cleavageBtn').textContent = '🔍 Show Cleavage Planes';
+        }
+
+        function clearMineral() {
+            if (mineralMesh) {
+                scene.remove(mineralMesh);
+                mineralMesh = null;
+            }
+
+            fractureParts.forEach(part => {
+                scene.remove(part);
+            });
+            fractureParts = [];
+
+            // Clear cleavage planes
+            cleavagePlanes.forEach(plane => {
+                scene.remove(plane);
+            });
+            cleavagePlanes = [];
+        }
+
+        function toggleCleavagePlanes() {
+            if (!currentMineral) return;
+
+            const data = mineralData[currentMineral];
+
+            // Clear existing cleavage planes
+            cleavagePlanes.forEach(plane => {
+                scene.remove(plane);
+            });
+            cleavagePlanes = [];
+
+            if (showCleavagePlanes) {
+                // Hide cleavage planes
+                showCleavagePlanes = false;
+                document.getElementById('cleavageBtn').textContent = '🔍 Show Cleavage Planes';
+                return;
+            }
+
+            // Check if mineral has cleavage planes to show
+            if (!data.cleavagePlanes || data.cleavagePlanes.length === 0) {
+                // Show message for minerals without cleavage planes
+                showCleavagePlanes = true;
+                document.getElementById('cleavageBtn').textContent = '🚫 Hide Cleavage Planes';
+
+                // Create a text message indicating no cleavage planes
+                const loader = new THREE.FontLoader();
+                // Since we can't load fonts easily, we'll create a simple plane with text texture
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 512;
+                canvas.height = 128;
+
+                context.fillStyle = 'rgba(255, 215, 0, 0.8)';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.fillStyle = '#1a1a3a';
+                context.font = 'bold 32px Arial';
+                context.textAlign = 'center';
+                context.fillText('No Cleavage Planes', canvas.width/2, canvas.height/2 + 10);
+                context.font = '20px Arial';
+                context.fillText('(Irregular Fracture)', canvas.width/2, canvas.height/2 + 40);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                const planeMaterial = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    transparent: true,
+                    opacity: 0.9,
+                    side: THREE.DoubleSide
+                });
+
+                const planeGeometry = new THREE.PlaneGeometry(3, 0.75);
+                const messagePlane = new THREE.Mesh(planeGeometry, planeMaterial);
+                messagePlane.position.set(0, 2, 0);
+
+                scene.add(messagePlane);
+                cleavagePlanes.push(messagePlane);
+                return;
+            }
+
+            // Show cleavage planes
+            showCleavagePlanes = true;
+            document.getElementById('cleavageBtn').textContent = '🚫 Hide Cleavage Planes';
+
+            data.cleavagePlanes.forEach((planeData, index) => {
+                // Create realistic cleavage plane like the sample diagram
+                const planeGeometry = new THREE.PlaneGeometry(3.5, 3.5);
+                const planeMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0xcccccc,
+                    transparent: true,
+                    opacity: 0.4,
+                    side: THREE.DoubleSide,
+                    metalness: 0.1,
+                    roughness: 0.8,
+                    clearcoat: 0.2
+                });
+
+                const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+
+                // Position and orient the plane based on normal vector
+                const normal = new THREE.Vector3(...planeData.normal).normalize();
+
+                // Create proper orientation matrix
+                const up = new THREE.Vector3(0, 1, 0);
+                if (Math.abs(normal.dot(up)) > 0.99) {
+                    up.set(1, 0, 0); // Avoid parallel vectors
+                }
+
+                const right = new THREE.Vector3().crossVectors(up, normal).normalize();
+                const actualUp = new THREE.Vector3().crossVectors(normal, right).normalize();
+
+                const matrix = new THREE.Matrix4().makeBasis(right, actualUp, normal);
+                plane.setRotationFromMatrix(matrix);
+                plane.position.set(...planeData.position);
+
+                // Add subtle grid lines to show cleavage surface texture
+                const gridGeometry = new THREE.PlaneGeometry(3.5, 3.5, 8, 8);
+                const gridMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x666666,
+                    transparent: true,
+                    opacity: 0.2,
+                    wireframe: true,
+                    side: THREE.DoubleSide
+                });
+                const grid = new THREE.Mesh(gridGeometry, gridMaterial);
+                grid.position.copy(plane.position);
+                grid.rotation.copy(plane.rotation);
+
+                // Add clean edge lines like in the sample
+                const edges = new THREE.EdgesGeometry(planeGeometry);
+                const edgeMaterial = new THREE.LineBasicMaterial({
+                    color: 0x333333,
+                    linewidth: 3,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const wireframe = new THREE.LineSegments(edges, edgeMaterial);
+                wireframe.position.copy(plane.position);
+                wireframe.rotation.copy(plane.rotation);
+
+                scene.add(plane);
+                scene.add(grid);
+                scene.add(wireframe);
+                cleavagePlanes.push(plane, grid, wireframe);
+
+                // Add angle labels for cubic cleavage
+                if (data.fractureType === "three_planes_90" && index === 2) {
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = 128;
+                    canvas.height = 64;
+
+                    context.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    context.fillStyle = '#333333';
+                    context.font = 'bold 18px Arial';
+                    context.textAlign = 'center';
+                    context.fillText('3@90°', canvas.width/2, canvas.height/2 + 8);
+
+                    const texture = new THREE.CanvasTexture(canvas);
+                    const labelMaterial = new THREE.MeshBasicMaterial({
+                        map: texture,
+                        transparent: true,
+                        opacity: 0.9,
+                        side: THREE.DoubleSide
+                    });
+
+                    const labelGeometry = new THREE.PlaneGeometry(0.8, 0.4);
+                    const label = new THREE.Mesh(labelGeometry, labelMaterial);
+                    label.position.set(1.5, 1.5, 1.5);
+
+                    scene.add(label);
+                    cleavagePlanes.push(label);
+                }
+
+                // Add angle labels for rhombohedral cleavage
+                if (data.fractureType === "three_planes_oblique" && index === 2) {
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = 128;
+                    canvas.height = 64;
+
+                    context.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    context.fillStyle = '#333333';
+                    context.font = 'bold 16px Arial';
+                    context.textAlign = 'center';
+                    context.fillText('3≠90°', canvas.width/2, canvas.height/2 + 8);
+
+                    const texture = new THREE.CanvasTexture(canvas);
+                    const labelMaterial = new THREE.MeshBasicMaterial({
+                        map: texture,
+                        transparent: true,
+                        opacity: 0.9,
+                        side: THREE.DoubleSide
+                    });
+
+                    const labelGeometry = new THREE.PlaneGeometry(0.8, 0.4);
+                    const label = new THREE.Mesh(labelGeometry, labelMaterial);
+                    label.position.set(1.5, 1.5, 1.5);
+
+                    scene.add(label);
+                    cleavagePlanes.push(label);
+                }
+            });
+        }
+
+        function explodeView() {
+            if (!isExploded && fractureParts.length > 0) {
+                // Explode view
+                fractureParts.forEach((part, index) => {
+                    const currentPos = part.position.clone();
+                    const direction = currentPos.normalize();
+                    const newPos = direction.multiplyScalar(5);
+
+                    const startPos = part.position.clone();
+                    let progress = 0;
+
+                    const animate = () => {
+                        progress += 0.02;
+                        part.position.lerpVectors(startPos, newPos, progress);
+
+                        if (progress < 1) {
+                            requestAnimationFrame(animate);
+                        }
+                    };
+
+                    setTimeout(animate, index * 50);
+                });
+
+                isExploded = true;
+                document.getElementById('explodeBtn').textContent = '🔄 Collapse View';
+            } else if (isExploded && fractureParts.length > 0) {
+                // Collapse view
+                fractureParts.forEach((part, index) => {
+                    const currentPos = part.position.clone();
+                    const targetPos = new THREE.Vector3(0, 0, 0);
+
+                    let progress = 0;
+
+                    const animate = () => {
+                        progress += 0.02;
+                        part.position.lerpVectors(currentPos, targetPos, progress);
+
+                        if (progress < 1) {
+                            requestAnimationFrame(animate);
+                        }
+                    };
+
+                    setTimeout(animate, index * 30);
+                });
+
+                isExploded = false;
+                document.getElementById('explodeBtn').textContent = '💥 Explode View';
+            }
+        }
+
+        function updateMineralInfo(data) {
+            document.getElementById('mineralName').textContent = data.name;
+            document.getElementById('mineralClass').textContent = data.mineralClass;
+            document.getElementById('mineralFormula').textContent = data.formula;
+            document.getElementById('hardnessValue').textContent = data.hardness;
+            document.getElementById('mineralFracture').textContent = data.fracture;
+
+            // Update hardness dots
+            const dotsContainer = document.getElementById('hardnessDots');
+            dotsContainer.innerHTML = '';
+
+            for (let i = 1; i <= 10; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'hardness-dot';
+                if (i <= Math.ceil(data.hardnessNum)) {
+                    dot.classList.add('active');
+                }
+                dotsContainer.appendChild(dot);
+            }
+        }
+
+        function updateProgress(percent) {
+            document.getElementById('progressFill').style.width = `${percent}%`;
+        }
+
+        function animateProgress() {
+            let progress = 0;
+            const animate = () => {
+                progress += 2;
+                updateProgress(progress);
+
+                if (progress < 100) {
+                    setTimeout(animate, 50);
+                } else {
+                    document.getElementById('fractureInfo').textContent = 'Fracture complete! Observe the pattern.';
+                }
+            };
+            animate();
+        }
+
+        function toggleRotation() {
+            isRotating = !isRotating;
+            const btn = document.getElementById('rotateBtn');
+            btn.textContent = isRotating ? '⏸️ Stop Rotation' : '🔄 Auto Rotate';
+        }
+
+        function setupEventListeners() {
+            // UI Controls
+            document.getElementById('mineralSelect').addEventListener('change', (e) => {
+                loadMineral(e.target.value);
+            });
+
+            document.getElementById('fractureBtn').addEventListener('click', fractureMineral);
+            document.getElementById('resetBtn').addEventListener('click', resetMineral);
+            document.getElementById('cleavageBtn').addEventListener('click', toggleCleavagePlanes);
+            document.getElementById('rotateBtn').addEventListener('click', toggleRotation);
+            document.getElementById('explodeBtn').addEventListener('click', explodeView);
+
+            // Keyboard controls
+            document.addEventListener('keydown', (event) => {
+                // Prevent keyboard shortcuts when typing in select elements
+                if (event.target.tagName === 'SELECT' || event.target.tagName === 'INPUT') {
+                    return;
+                }
+
+                switch (event.code) {
+                    case 'KeyF':
+                        event.preventDefault();
+                        fractureMineral();
+                        break;
+                    case 'KeyR':
+                        event.preventDefault();
+                        resetMineral();
+                        break;
+                    case 'KeyC':
+                        event.preventDefault();
+                        toggleCleavagePlanes();
+                        break;
+                    case 'Space':
+                        event.preventDefault();
+                        toggleRotation();
+                        break;
+                }
+            });
+
+            // Window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Auto rotation
+            if (isRotating && mineralMesh) {
+                mineralMesh.rotation.y += 0.01;
+            }
+
+            // Rotate fracture parts if auto-rotation is on
+            if (isRotating && fractureParts.length > 0) {
+                fractureParts.forEach(part => {
+                    part.rotation.y += 0.005;
+                });
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
